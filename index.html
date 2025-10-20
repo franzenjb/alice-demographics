@@ -1,0 +1,1271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ALICE Comprehensive Demographics Explorer</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f8f9fa;
+            overflow: hidden;
+        }
+
+        .app-container {
+            display: flex;
+            height: 100vh;
+        }
+
+        .sidebar {
+            width: 400px;
+            background: white;
+            border-right: 1px solid #e0e0e0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .header {
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            margin-bottom: 5px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 0.9rem;
+        }
+
+        .controls {
+            padding: 20px;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .control-group {
+            margin-bottom: 25px;
+        }
+
+        .control-group label {
+            display: block;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .search-container {
+            position: relative;
+            margin-bottom: 15px;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 12px 40px 12px 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .search-icon {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #999;
+        }
+
+        .category-container {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+        }
+
+        .category {
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .category:last-child {
+            border-bottom: none;
+        }
+
+        .category-header {
+            padding: 15px;
+            background: #f8f9fa;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background-color 0.2s;
+        }
+
+        .category-header:hover {
+            background: #e9ecef;
+        }
+
+        .category-header.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .category-title {
+            font-weight: 600;
+            flex: 1;
+        }
+
+        .category-count {
+            background: #6c757d;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            margin-left: 10px;
+        }
+
+        .category-header.active .category-count {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .category-toggle {
+            margin-left: 10px;
+            transform: rotate(0deg);
+            transition: transform 0.2s;
+        }
+
+        .category-header.active .category-toggle {
+            transform: rotate(90deg);
+        }
+
+        .variables-list {
+            display: none;
+            padding: 10px 15px;
+            background: white;
+        }
+
+        .variables-list.active {
+            display: block;
+        }
+
+        .variable-item {
+            display: flex;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .variable-item:last-child {
+            border-bottom: none;
+        }
+
+        .variable-checkbox {
+            margin-right: 10px;
+            transform: scale(1.1);
+        }
+
+        .variable-label {
+            font-size: 0.9rem;
+            color: #333;
+            cursor: pointer;
+            flex: 1;
+        }
+
+        .variable-label:hover {
+            color: #667eea;
+        }
+
+        /* DUAL RANGE VISUAL SLIDERS */
+        .slider-container {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+            max-height: 400px;
+            overflow-y: auto;
+            display: none;
+        }
+
+        .slider-container.active {
+            display: block;
+        }
+
+        .slider-group {
+            margin-bottom: 25px;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .slider-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .slider-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .slider-variable-name {
+            color: #667eea;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .slider-range-display {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-family: monospace;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .dual-slider-container {
+            position: relative;
+            margin: 15px 0;
+        }
+
+        .slider-track {
+            height: 25px;
+            border-radius: 12px;
+            position: relative;
+            overflow: hidden;
+            border: 2px solid #ddd;
+        }
+
+        .slider-gradient {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        /* HIGH CONTRAST GRADIENTS */
+        .gradient-red-blue {
+            background: linear-gradient(to right, 
+                #ffffff 0%,
+                #fff5f0 10%, 
+                #fee0d2 20%,
+                #fcbba1 35%, 
+                #fc9272 50%, 
+                #fb6a4a 65%, 
+                #ef3b2c 80%,
+                #cb181d 90%,
+                #67000d 100%);
+        }
+
+        .gradient-population {
+            background: linear-gradient(to right, 
+                #ffffff 0%,
+                #f7fcf0 10%,
+                #e0f3db 20%,
+                #ccebc5 35%,
+                #a8ddb5 50%,
+                #7bccc4 65%,
+                #4eb3d3 80%,
+                #2b8cbe 90%,
+                #08519c 100%);
+        }
+
+        .gradient-income {
+            background: linear-gradient(to right, 
+                #ffffff 0%,
+                #fff7ec 10%,
+                #fee8c8 20%,
+                #fdd49e 35%,
+                #fdbb84 50%,
+                #fc8d59 65%,
+                #ef6548 80%,
+                #d7301f 90%,
+                #7f0000 100%);
+        }
+
+        .range-highlight {
+            position: absolute;
+            top: 0;
+            height: 100%;
+            background: rgba(102, 126, 234, 0.3);
+            border: 2px solid #667eea;
+            border-radius: 10px;
+            z-index: 5;
+        }
+
+        .slider-thumb {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 28px;
+            height: 28px;
+            background: white;
+            border: 3px solid #667eea;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.4);
+            z-index: 10;
+            transition: all 0.2s ease;
+        }
+
+        .slider-thumb:hover {
+            transform: translateY(-50%) scale(1.15);
+            border-color: #5a6fd8;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+
+        .slider-thumb.min-thumb {
+            border-color: #e74c3c;
+        }
+
+        .slider-thumb.max-thumb {
+            border-color: #27ae60;
+        }
+
+        .slider-thumb::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 10px;
+            height: 10px;
+            background: currentColor;
+            border-radius: 50%;
+        }
+
+        .slider-thumb.min-thumb::after {
+            background: #e74c3c;
+        }
+
+        .slider-thumb.max-thumb::after {
+            background: #27ae60;
+        }
+
+        .threshold-indicator {
+            position: absolute;
+            top: -35px;
+            transform: translateX(-50%);
+            background: #333;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            white-space: nowrap;
+            z-index: 15;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+
+        .threshold-indicator.min-indicator {
+            background: #e74c3c;
+        }
+
+        .threshold-indicator.max-indicator {
+            background: #27ae60;
+        }
+
+        .threshold-indicator::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 5px solid transparent;
+            border-top-color: inherit;
+        }
+
+        .slider-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.7rem;
+            color: #666;
+            margin-top: 8px;
+        }
+
+        .range-min, .range-max {
+            padding: 3px 8px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            border: 1px solid #e0e0e0;
+            font-weight: 600;
+        }
+
+        .data-impact {
+            margin-top: 12px;
+            padding: 10px;
+            background: linear-gradient(135deg, #f0f8ff, #e6f3ff);
+            border-radius: 6px;
+            border-left: 4px solid #667eea;
+        }
+
+        .impact-text {
+            font-size: 0.8rem;
+            color: #4a5568;
+            line-height: 1.4;
+        }
+
+        .impact-highlight {
+            font-weight: 700;
+            color: #667eea;
+        }
+
+        .impact-range {
+            color: #e74c3c;
+            font-weight: 600;
+        }
+
+        .selected-info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-top: 1px solid #e0e0e0;
+            text-align: center;
+        }
+
+        .selected-count {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #667eea;
+        }
+
+        .base-map-selector {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 15px;
+        }
+
+        .base-map-btn {
+            flex: 1;
+            padding: 8px 12px;
+            border: 2px solid #e0e0e0;
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.8rem;
+            text-align: center;
+        }
+
+        .base-map-btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .base-map-btn:hover {
+            border-color: #667eea;
+        }
+
+        .map-container {
+            flex: 1;
+            position: relative;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+
+        .leaflet-popup-content {
+            font-family: inherit;
+            line-height: 1.4;
+        }
+
+        .popup-title {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .popup-data {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .popup-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 3px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .popup-item:last-child {
+            border-bottom: none;
+        }
+
+        .popup-label {
+            font-weight: 500;
+            color: #666;
+        }
+
+        .popup-value {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5a6fd8;
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+            transform: translateY(-1px);
+        }
+
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255,255,255,0.95);
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            z-index: 1000;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .hide {
+            display: none;
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="header">
+                <h1>ALICE Demographics</h1>
+                <p>Dual-Range Visual Sliders</p>
+            </div>
+            
+            <div class="controls">
+                <!-- Base Map Selector -->
+                <div class="control-group">
+                    <label>Base Map Style</label>
+                    <div class="base-map-selector">
+                        <div class="base-map-btn active" data-layer="light">Light</div>
+                        <div class="base-map-btn" data-layer="dark">Dark</div>
+                        <div class="base-map-btn" data-layer="satellite">Satellite</div>
+                        <div class="base-map-btn" data-layer="terrain">Terrain</div>
+                    </div>
+                </div>
+
+                <!-- Variable Selector -->
+                <div class="control-group">
+                    <label>Select Variables to Display</label>
+                    
+                    <!-- Search -->
+                    <div class="search-container">
+                        <input type="text" class="search-input" placeholder="Search variables..." id="variableSearch">
+                        <span class="search-icon">🔍</span>
+                    </div>
+
+                    <!-- Categories -->
+                    <div class="category-container" id="categoriesContainer">
+                        <!-- Categories will be populated here -->
+                    </div>
+
+                    <!-- Dual Range Visual Sliders for Selected Variables -->
+                    <div class="slider-container" id="slidersContainer">
+                        <strong style="display: block; margin-bottom: 15px; color: #667eea;">🎛️ Dual-Range Visual Filters</strong>
+                        <div id="sliders">
+                            <!-- Dual range sliders will be populated here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="action-buttons">
+                    <button class="btn btn-primary" id="applyBtn">Apply Selection</button>
+                    <button class="btn btn-secondary" id="clearBtn">Clear All</button>
+                </div>
+            </div>
+
+            <!-- Selected Variables Info -->
+            <div class="selected-info">
+                <div class="selected-count" id="selectedCount">0 variables selected</div>
+            </div>
+        </div>
+
+        <!-- Map Container -->
+        <div class="map-container">
+            <div id="map"></div>
+            <div class="loading hide" id="loading">
+                <div class="spinner"></div>
+                <div>Loading comprehensive data...</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        class ALICEComprehensiveExplorer {
+            constructor() {
+                this.map = null;
+                this.currentLayer = null;
+                this.data = null;
+                this.categories = null;
+                this.selectedVariables = new Set();
+                this.variableRanges = new Map();
+                this.tileLayers = {};
+                this.currentBasemap = 'light';
+                
+                this.init();
+            }
+
+            async init() {
+                this.setupMap();
+                this.setupEventListeners();
+                await this.loadData();
+                this.populateCategories();
+            }
+
+            setupMap() {
+                // Initialize tile layers
+                this.tileLayers = {
+                    light: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: '© OpenStreetMap contributors'
+                    }),
+                    dark: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                        attribution: '© OpenStreetMap contributors, © CARTO'
+                    }),
+                    satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                        attribution: '© Esri, Maxar, Earthstar Geographics'
+                    }),
+                    terrain: L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+                        attribution: '© OpenTopoMap contributors'
+                    })
+                };
+
+                // Initialize map
+                this.map = L.map('map').setView([39.8283, -98.5795], 4);
+                this.tileLayers[this.currentBasemap].addTo(this.map);
+            }
+
+            setupEventListeners() {
+                // Base map switching
+                document.querySelectorAll('.base-map-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const layer = e.target.dataset.layer;
+                        this.switchBasemap(layer);
+                    });
+                });
+
+                // Search functionality
+                document.getElementById('variableSearch').addEventListener('input', (e) => {
+                    this.filterVariables(e.target.value);
+                });
+
+                // Action buttons
+                document.getElementById('applyBtn').addEventListener('click', () => {
+                    this.applySelection();
+                });
+
+                document.getElementById('clearBtn').addEventListener('click', () => {
+                    this.clearSelection();
+                });
+            }
+
+            switchBasemap(layerName) {
+                // Remove current layer
+                this.map.removeLayer(this.tileLayers[this.currentBasemap]);
+                
+                // Add new layer
+                this.tileLayers[layerName].addTo(this.map);
+                this.currentBasemap = layerName;
+                
+                // Update UI
+                document.querySelectorAll('.base-map-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                document.querySelector(`[data-layer="${layerName}"]`).classList.add('active');
+            }
+
+            async loadData() {
+                try {
+                    document.getElementById('loading').classList.remove('hide');
+                    
+                    // Load both data and categories
+                    const [dataResponse, categoriesResponse] = await Promise.all([
+                        fetch('./alice_census_comprehensive/alice_census_comprehensive_web.geojson'),
+                        fetch('./alice_census_comprehensive/variable_categories.json')
+                    ]);
+                    
+                    this.data = await dataResponse.json();
+                    this.categories = await categoriesResponse.json();
+                    
+                    console.log('Loaded data with', this.data.features.length, 'counties');
+                    console.log('Available categories:', Object.keys(this.categories));
+                    
+                } catch (error) {
+                    console.error('Error loading data:', error);
+                    alert('Error loading comprehensive data. Please check the data files.');
+                } finally {
+                    document.getElementById('loading').classList.add('hide');
+                }
+            }
+
+            populateCategories() {
+                const container = document.getElementById('categoriesContainer');
+                container.innerHTML = '';
+
+                Object.entries(this.categories).forEach(([categoryName, categoryData]) => {
+                    const categoryDiv = document.createElement('div');
+                    categoryDiv.className = 'category';
+                    
+                    categoryDiv.innerHTML = `
+                        <div class="category-header" data-category="${categoryName}">
+                            <span class="category-title">${categoryName}</span>
+                            <span class="category-count">${categoryData.variables.length}</span>
+                            <span class="category-toggle">▶</span>
+                        </div>
+                        <div class="variables-list" data-category="${categoryName}">
+                            ${categoryData.variables.map(variable => `
+                                <div class="variable-item" data-variable="${variable}">
+                                    <input type="checkbox" class="variable-checkbox" id="var_${variable}" data-variable="${variable}">
+                                    <label for="var_${variable}" class="variable-label">${this.formatVariableName(variable)}</label>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                    
+                    container.appendChild(categoryDiv);
+                });
+
+                // Add event listeners
+                this.setupCategoryEventListeners();
+            }
+
+            setupCategoryEventListeners() {
+                // Category toggle
+                document.querySelectorAll('.category-header').forEach(header => {
+                    header.addEventListener('click', (e) => {
+                        const category = e.currentTarget.dataset.category;
+                        const variablesList = document.querySelector(`.variables-list[data-category="${category}"]`);
+                        const isActive = header.classList.contains('active');
+                        
+                        if (isActive) {
+                            header.classList.remove('active');
+                            variablesList.classList.remove('active');
+                        } else {
+                            header.classList.add('active');
+                            variablesList.classList.add('active');
+                        }
+                    });
+                });
+
+                // Variable selection
+                document.querySelectorAll('.variable-checkbox').forEach(checkbox => {
+                    checkbox.addEventListener('change', (e) => {
+                        const variable = e.target.dataset.variable;
+                        if (e.target.checked) {
+                            this.selectedVariables.add(variable);
+                            this.calculateVariableRange(variable);
+                        } else {
+                            this.selectedVariables.delete(variable);
+                            this.variableRanges.delete(variable);
+                        }
+                        this.updateSelectedCount();
+                        this.updateDualSliders();
+                    });
+                });
+            }
+
+            calculateVariableRange(variable) {
+                if (!this.data) return;
+                
+                const values = this.data.features
+                    .map(f => f.properties[variable])
+                    .filter(v => v !== null && v !== undefined && !isNaN(v));
+                
+                if (values.length > 0) {
+                    const min = Math.min(...values);
+                    const max = Math.max(...values);
+                    this.variableRanges.set(variable, { 
+                        dataMin: min, 
+                        dataMax: max, 
+                        minThreshold: min, 
+                        maxThreshold: max 
+                    });
+                }
+            }
+
+            getGradientClass(variable) {
+                // Determine gradient type based on variable name
+                if (variable.includes('Population') || variable.includes('Total_')) {
+                    return 'gradient-population';
+                } else if (variable.includes('Income') || variable.includes('Median_')) {
+                    return 'gradient-income';
+                } else {
+                    return 'gradient-red-blue';
+                }
+            }
+
+            calculateCountiesInRange(variable, minThreshold, maxThreshold) {
+                if (!this.data) return 0;
+                
+                const inRange = this.data.features.filter(f => {
+                    const value = f.properties[variable];
+                    return value !== null && value !== undefined && !isNaN(value) && 
+                           value >= minThreshold && value <= maxThreshold;
+                }).length;
+                
+                return inRange;
+            }
+
+            updateDualSliders() {
+                const container = document.getElementById('slidersContainer');
+                const slidersDiv = document.getElementById('sliders');
+                
+                if (this.selectedVariables.size === 0) {
+                    container.classList.remove('active');
+                    slidersDiv.innerHTML = '';
+                    return;
+                }
+                
+                container.classList.add('active');
+                slidersDiv.innerHTML = '';
+                
+                this.selectedVariables.forEach(variable => {
+                    const range = this.variableRanges.get(variable);
+                    if (!range) return;
+                    
+                    const gradientClass = this.getGradientClass(variable);
+                    const countiesInRange = this.calculateCountiesInRange(variable, range.minThreshold, range.maxThreshold);
+                    const totalCounties = this.data.features.length;
+                    const percentage = ((countiesInRange / totalCounties) * 100).toFixed(1);
+                    
+                    const sliderDiv = document.createElement('div');
+                    sliderDiv.className = 'slider-group';
+                    sliderDiv.innerHTML = `
+                        <div class="slider-header">
+                            <span class="slider-variable-name">${this.formatVariableName(variable)}</span>
+                            <span class="slider-range-display" id="range_${variable}">
+                                ${range.minThreshold.toLocaleString()} - ${range.maxThreshold.toLocaleString()}
+                            </span>
+                        </div>
+                        <div class="dual-slider-container">
+                            <div class="slider-track">
+                                <div class="slider-gradient ${gradientClass}"></div>
+                                <div class="range-highlight" id="highlight_${variable}"></div>
+                                <div class="slider-thumb min-thumb" id="minThumb_${variable}" data-variable="${variable}" data-type="min"></div>
+                                <div class="slider-thumb max-thumb" id="maxThumb_${variable}" data-variable="${variable}" data-type="max"></div>
+                                <div class="threshold-indicator min-indicator" id="minIndicator_${variable}">MIN: ${range.minThreshold.toLocaleString()}</div>
+                                <div class="threshold-indicator max-indicator" id="maxIndicator_${variable}">MAX: ${range.maxThreshold.toLocaleString()}</div>
+                            </div>
+                        </div>
+                        <div class="slider-labels">
+                            <span class="range-min">Data Min: ${range.dataMin.toLocaleString()}</span>
+                            <span class="range-max">Data Max: ${range.dataMax.toLocaleString()}</span>
+                        </div>
+                        <div class="data-impact">
+                            <div class="impact-text">
+                                <span class="impact-highlight">${countiesInRange.toLocaleString()}</span> counties (${percentage}%) 
+                                in range <span class="impact-range">${range.minThreshold.toLocaleString()} - ${range.maxThreshold.toLocaleString()}</span>
+                            </div>
+                        </div>
+                    `;
+                    
+                    slidersDiv.appendChild(sliderDiv);
+                    
+                    // Setup dual slider interaction
+                    this.setupDualSlider(variable, range);
+                });
+            }
+
+            setupDualSlider(variable, range) {
+                const minThumb = document.getElementById(`minThumb_${variable}`);
+                const maxThumb = document.getElementById(`maxThumb_${variable}`);
+                const minIndicator = document.getElementById(`minIndicator_${variable}`);
+                const maxIndicator = document.getElementById(`maxIndicator_${variable}`);
+                const rangeDisplay = document.getElementById(`range_${variable}`);
+                const highlight = document.getElementById(`highlight_${variable}`);
+                const track = minThumb.parentElement;
+                
+                // Position thumbs initially
+                this.updateDualThumbPositions(variable, range);
+                
+                let isDragging = false;
+                let activeThumb = null;
+                
+                [minThumb, maxThumb].forEach(thumb => {
+                    thumb.addEventListener('mousedown', (e) => {
+                        isDragging = true;
+                        activeThumb = thumb;
+                        e.preventDefault();
+                    });
+                });
+                
+                document.addEventListener('mousemove', (e) => {
+                    if (!isDragging || !activeThumb) return;
+                    
+                    const trackRect = track.getBoundingClientRect();
+                    const x = e.clientX - trackRect.left;
+                    const percentage = Math.max(0, Math.min(1, x / trackRect.width));
+                    
+                    const newValue = range.dataMin + (range.dataMax - range.dataMin) * percentage;
+                    const thumbType = activeThumb.dataset.type;
+                    
+                    if (thumbType === 'min') {
+                        range.minThreshold = Math.min(newValue, range.maxThreshold);
+                    } else {
+                        range.maxThreshold = Math.max(newValue, range.minThreshold);
+                    }
+                    
+                    // Update displays
+                    rangeDisplay.textContent = `${Math.round(range.minThreshold).toLocaleString()} - ${Math.round(range.maxThreshold).toLocaleString()}`;
+                    minIndicator.textContent = `MIN: ${Math.round(range.minThreshold).toLocaleString()}`;
+                    maxIndicator.textContent = `MAX: ${Math.round(range.maxThreshold).toLocaleString()}`;
+                    
+                    // Update thumb positions and highlight
+                    this.updateDualThumbPositions(variable, range);
+                    
+                    // Update impact statistics
+                    this.updateRangeStats(variable);
+                    
+                    // Update visualization
+                    this.updateVisualization();
+                });
+                
+                document.addEventListener('mouseup', () => {
+                    isDragging = false;
+                    activeThumb = null;
+                });
+            }
+
+            updateDualThumbPositions(variable, range) {
+                const minThumb = document.getElementById(`minThumb_${variable}`);
+                const maxThumb = document.getElementById(`maxThumb_${variable}`);
+                const minIndicator = document.getElementById(`minIndicator_${variable}`);
+                const maxIndicator = document.getElementById(`maxIndicator_${variable}`);
+                const highlight = document.getElementById(`highlight_${variable}`);
+                
+                if (!minThumb || !maxThumb) return;
+                
+                const minPercentage = (range.minThreshold - range.dataMin) / (range.dataMax - range.dataMin);
+                const maxPercentage = (range.maxThreshold - range.dataMin) / (range.dataMax - range.dataMin);
+                
+                const minPosition = minPercentage * 100;
+                const maxPosition = maxPercentage * 100;
+                
+                minThumb.style.left = `${minPosition}%`;
+                maxThumb.style.left = `${maxPosition}%`;
+                minIndicator.style.left = `${minPosition}%`;
+                maxIndicator.style.left = `${maxPosition}%`;
+                
+                // Update range highlight
+                highlight.style.left = `${minPosition}%`;
+                highlight.style.width = `${maxPosition - minPosition}%`;
+            }
+
+            updateRangeStats(variable) {
+                const range = this.variableRanges.get(variable);
+                const sliderGroup = document.getElementById(`minThumb_${variable}`).closest('.slider-group');
+                const impactText = sliderGroup.querySelector('.impact-text');
+                
+                const countiesInRange = this.calculateCountiesInRange(variable, range.minThreshold, range.maxThreshold);
+                const totalCounties = this.data.features.length;
+                const percentage = ((countiesInRange / totalCounties) * 100).toFixed(1);
+                
+                impactText.innerHTML = `
+                    <span class="impact-highlight">${countiesInRange.toLocaleString()}</span> counties (${percentage}%) 
+                    in range <span class="impact-range">${Math.round(range.minThreshold).toLocaleString()} - ${Math.round(range.maxThreshold).toLocaleString()}</span>
+                `;
+            }
+
+            formatVariableName(variable) {
+                return variable.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+            }
+
+            filterVariables(searchTerm) {
+                const term = searchTerm.toLowerCase();
+                
+                document.querySelectorAll('.variable-item').forEach(item => {
+                    const label = item.querySelector('.variable-label').textContent.toLowerCase();
+                    const variable = item.dataset.variable.toLowerCase();
+                    
+                    if (label.includes(term) || variable.includes(term)) {
+                        item.style.display = 'flex';
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+
+                // Hide categories with no visible variables
+                document.querySelectorAll('.category').forEach(category => {
+                    const visibleItems = category.querySelectorAll('.variable-item[style="display: flex;"], .variable-item:not([style])');
+                    
+                    if (term === '' || visibleItems.length > 0) {
+                        category.style.display = 'block';
+                    } else {
+                        category.style.display = 'none';
+                    }
+                });
+            }
+
+            updateSelectedCount() {
+                const count = this.selectedVariables.size;
+                const countElement = document.getElementById('selectedCount');
+                countElement.textContent = `${count} variable${count !== 1 ? 's' : ''} selected`;
+            }
+
+            applySelection() {
+                if (this.selectedVariables.size === 0) {
+                    alert('Please select at least one variable to display.');
+                    return;
+                }
+
+                if (!this.data) {
+                    alert('Data not loaded yet. Please wait.');
+                    return;
+                }
+
+                this.createVisualization();
+            }
+
+            clearSelection() {
+                this.selectedVariables.clear();
+                this.variableRanges.clear();
+                
+                document.querySelectorAll('.variable-checkbox').forEach(checkbox => {
+                    checkbox.checked = false;
+                });
+                this.updateSelectedCount();
+                this.updateDualSliders();
+                
+                if (this.currentLayer) {
+                    this.map.removeLayer(this.currentLayer);
+                    this.currentLayer = null;
+                }
+            }
+
+            createVisualization() {
+                if (this.currentLayer) {
+                    this.map.removeLayer(this.currentLayer);
+                }
+
+                this.currentLayer = L.geoJSON(this.data, {
+                    style: (feature) => this.getFeatureStyle(feature),
+                    onEachFeature: (feature, layer) => {
+                        layer.on({
+                            mouseover: (e) => {
+                                const currentStyle = this.getFeatureStyle(feature);
+                                e.target.setStyle({
+                                    weight: currentStyle.weight + 2,
+                                    color: '#333'
+                                });
+                            },
+                            mouseout: (e) => {
+                                this.currentLayer.resetStyle(e.target);
+                            },
+                            click: (e) => {
+                                this.showPopup(feature, e.latlng);
+                            }
+                        });
+                    }
+                }).addTo(this.map);
+            }
+
+            updateVisualization() {
+                if (this.currentLayer) {
+                    this.currentLayer.eachLayer((layer) => {
+                        const feature = layer.feature;
+                        const style = this.getFeatureStyle(feature);
+                        layer.setStyle(style);
+                    });
+                }
+            }
+
+            getFeatureStyle(feature) {
+                // Calculate composite score based on selected variables and their range filters
+                let score = 0;
+                let validVariables = 0;
+                let isInRange = false;
+                
+                this.selectedVariables.forEach(variable => {
+                    const value = feature.properties[variable];
+                    const range = this.variableRanges.get(variable);
+                    
+                    if (value !== null && value !== undefined && !isNaN(value) && range) {
+                        // Check if value is within the selected range for visibility
+                        if (value >= range.minThreshold && value <= range.maxThreshold) {
+                            isInRange = true;
+                        }
+                        
+                        // Score based on position within the FULL DATA RANGE (not slider range)
+                        const dataSpan = range.dataMax - range.dataMin;
+                        const normalizedValue = dataSpan > 0 ? (value - range.dataMin) / dataSpan : 1;
+                        score += normalizedValue;
+                        validVariables++;
+                    }
+                });
+                
+                // If county is not in selected range, make it nearly invisible
+                if (!isInRange || validVariables === 0) {
+                    return {
+                        fillColor: '#f0f0f0',
+                        weight: 1,
+                        opacity: 0.2,
+                        color: '#ccc',
+                        fillOpacity: 0.1
+                    };
+                }
+                
+                const averageScore = score / validVariables;
+                const color = this.getHighContrastColor(averageScore);
+                
+                return {
+                    fillColor: color,
+                    weight: 1,
+                    opacity: 0.8,
+                    color: '#666',
+                    fillOpacity: 0.8
+                };
+            }
+
+            getHighContrastColor(score) {
+                // High contrast color scale with dramatic differences
+                const colors = [
+                    '#ffffff', // Pure white (lowest)
+                    '#ffeda0', // Very light yellow
+                    '#fed976', // Light yellow
+                    '#feb24c', // Orange
+                    '#fd8d3c', // Dark orange
+                    '#fc4e2a', // Red-orange
+                    '#e31a1c', // Red
+                    '#bd0026', // Dark red
+                    '#800026'  // Very dark red (highest)
+                ];
+                
+                const index = Math.min(Math.floor(score * colors.length), colors.length - 1);
+                return colors[index];
+            }
+
+            showPopup(feature, latlng) {
+                const props = feature.properties;
+                const selectedVars = Array.from(this.selectedVariables);
+                
+                let popupContent = `
+                    <div class="popup-title">${props.County}, ${props.State}</div>
+                    <div class="popup-data">
+                `;
+                
+                selectedVars.forEach(variable => {
+                    const value = props[variable];
+                    const range = this.variableRanges.get(variable);
+                    const formattedValue = value !== null && value !== undefined ? 
+                        (typeof value === 'number' ? value.toLocaleString() : value) : 'N/A';
+                    
+                    let status = '❌';
+                    if (range && value !== null && value !== undefined && !isNaN(value)) {
+                        if (value >= range.minThreshold && value <= range.maxThreshold) {
+                            status = '✅';
+                        }
+                    }
+                    
+                    popupContent += `
+                        <div class="popup-item">
+                            <span class="popup-label">${this.formatVariableName(variable)}:</span>
+                            <span class="popup-value">${formattedValue} ${status}</span>
+                        </div>
+                    `;
+                });
+                
+                popupContent += '</div>';
+                
+                L.popup()
+                    .setLatLng(latlng)
+                    .setContent(popupContent)
+                    .openOn(this.map);
+            }
+        }
+
+        // Initialize the application when DOM is loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            new ALICEComprehensiveExplorer();
+        });
+    </script>
+</body>
+</html>
