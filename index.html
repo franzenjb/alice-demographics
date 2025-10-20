@@ -1159,22 +1159,22 @@
             }
 
             getFeatureStyle(feature) {
-                // Calculate composite score based on selected variables and their range filters
+                // Calculate composite score based on selected variables
                 let score = 0;
                 let validVariables = 0;
-                let isInRange = false;
+                let isInRange = true; // Assume in range unless proven otherwise
                 
                 this.selectedVariables.forEach(variable => {
                     const value = feature.properties[variable];
                     const range = this.variableRanges.get(variable);
                     
                     if (value !== null && value !== undefined && !isNaN(value) && range) {
-                        // Check if value is within the selected range for visibility
-                        if (value >= range.minThreshold && value <= range.maxThreshold) {
-                            isInRange = true;
+                        // Check if ALL selected variables are within their ranges
+                        if (value < range.minThreshold || value > range.maxThreshold) {
+                            isInRange = false;
                         }
                         
-                        // Score based on position within the FULL DATA RANGE (not slider range)
+                        // Score based on position within the FULL DATA RANGE (ALWAYS)
                         const dataSpan = range.dataMax - range.dataMin;
                         const normalizedValue = dataSpan > 0 ? (value - range.dataMin) / dataSpan : 1;
                         score += normalizedValue;
@@ -1182,26 +1182,32 @@
                     }
                 });
                 
-                // If county is not in selected range, make it nearly invisible
-                if (!isInRange || validVariables === 0) {
+                // If no variables selected, show default gray
+                if (validVariables === 0) {
                     return {
                         fillColor: '#f0f0f0',
                         weight: 1,
-                        opacity: 0.2,
+                        opacity: 0.5,
                         color: '#ccc',
-                        fillOpacity: 0.1
+                        fillOpacity: 0.3
                     };
                 }
                 
+                // ALWAYS calculate color based on actual data values
                 const averageScore = score / validVariables;
                 const color = this.getHighContrastColor(averageScore);
                 
+                // Use opacity to show filter state, but KEEP the color
+                const fillOpacity = isInRange ? 0.8 : 0.2;
+                const strokeWeight = isInRange ? 2 : 1;
+                const strokeColor = isInRange ? '#333' : '#999';
+                
                 return {
                     fillColor: color,
-                    weight: 1,
+                    weight: strokeWeight,
                     opacity: 0.8,
-                    color: '#666',
-                    fillOpacity: 0.8
+                    color: strokeColor,
+                    fillOpacity: fillOpacity
                 };
             }
 
