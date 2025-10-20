@@ -883,12 +883,12 @@
                     const percentile95 = values[p95Index];
                     
                     this.variableRanges.set(variable, { 
-                        dataMin: percentile5,     // Use 5th percentile instead of absolute min
-                        dataMax: percentile95,    // Use 95th percentile instead of absolute max
+                        dataMin: percentile5,     // Use 5th percentile for color scaling
+                        dataMax: percentile95,    // Use 95th percentile for color scaling
                         absoluteMin: min,         // Keep absolute values for reference
                         absoluteMax: max,
-                        minThreshold: percentile5, 
-                        maxThreshold: percentile95 
+                        minThreshold: min,        // Start sliders at absolute min
+                        maxThreshold: max         // Start sliders at absolute max
                     });
                 }
             }
@@ -1193,14 +1193,22 @@
                     const range = this.variableRanges.get(variable);
                     
                     if (value !== null && value !== undefined && !isNaN(value) && range) {
-                        // Check if ALL selected variables are within their ranges
+                        // Check if value is within the slider-selected range
                         if (value < range.minThreshold || value > range.maxThreshold) {
                             isInRange = false;
                         }
                         
-                        // Score based on position within the FULL DATA RANGE (ALWAYS)
+                        // Score based on position within the PERCENTILE RANGE (for better color distribution)
+                        // But clamp extreme values to 0-1 range
                         const dataSpan = range.dataMax - range.dataMin;
-                        const normalizedValue = dataSpan > 0 ? (value - range.dataMin) / dataSpan : 1;
+                        let normalizedValue;
+                        if (dataSpan > 0) {
+                            normalizedValue = (value - range.dataMin) / dataSpan;
+                            // Clamp values: below 5th percentile = 0, above 95th percentile = 1
+                            normalizedValue = Math.max(0, Math.min(1, normalizedValue));
+                        } else {
+                            normalizedValue = 1;
+                        }
                         score += normalizedValue;
                         validVariables++;
                     }
